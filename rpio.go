@@ -100,78 +100,78 @@ const (
 )
 
 // Arrays for 8 / 32 bit access to memory and a semaphore for write locking
-type rpio struct {
+type GPIO struct {
 	memlock sync.Mutex
 	mem     []uint32
 	mem8    []uint8
 }
 
-func Init() *rpio {
+func Init() *GPIO {
 	return &rpio
 }
 
 // Set pin as Input
-func (g *rpio) Input(pin Pin) {
+func (g *GPIO) Input(pin Pin) {
 	g.PinMode(pin, Input)
 }
 
 // Set pin as Output
-func (g *rpio) Output(pin Pin) {
+func (g *GPIO) Output(pin Pin) {
 	g.PinMode(pin, Output)
 }
 
 // Set pin High
-func (g *rpio) High(pin Pin) {
+func (g *GPIO) High(pin Pin) {
 	g.WritePin(pin, High)
 }
 
 // Set pin Low
-func (g *rpio) Low(pin Pin) {
+func (g *GPIO) Low(pin Pin) {
 	g.WritePin(pin, Low)
 }
 
 // Toggle pin state
-func (g *rpio) Toggle(pin Pin) {
+func (g *GPIO) Toggle(pin Pin) {
 	g.TogglePin(pin)
 }
 
 // Set pin Direction
-func (g *rpio) Mode(pin Pin, dir Direction) {
+func (g *GPIO) Mode(pin Pin, dir Direction) {
 	g.PinMode(pin, dir)
 }
 
 // Set pin state (high/low)
-func (g *rpio) Write(pin Pin, state State) {
+func (g *GPIO) Write(pin Pin, state State) {
 	g.WritePin(pin, state)
 }
 
 // Read pin state (high/low)
-func (g *rpio) Read(pin Pin) State {
+func (g *GPIO) Read(pin Pin) State {
 	return g.ReadPin(pin)
 }
 
 // Set a given pull up/down mode
-func (g *rpio) Pull(pin Pin, pull Pull) {
+func (g *GPIO) Pull(pin Pin, pull Pull) {
 	g.PullMode(pin, pull)
 }
 
 // Pull up pin
-func (g *rpio) PullUp(pin Pin) {
+func (g *GPIO) PullUp(pin Pin) {
 	g.PullMode(pin, PullUp)
 }
 
 // Pull down pin
-func (g *rpio) PullDown(pin Pin) {
+func (g *GPIO) PullDown(pin Pin) {
 	g.PullMode(pin, PullDown)
 }
 
 // Disable pullup/down on pin
-func (g *rpio) PullOff(pin Pin) {
+func (g *GPIO) PullOff(pin Pin) {
 	g.PullMode(pin, PullOff)
 }
 
 // PinMode sets the direction of a given pin (Input or Output)
-func (g *rpio) PinMode(pin Pin, direction Direction) {
+func (g *GPIO) PinMode(pin Pin, direction Direction) {
 
 	// Pin fsel register, 0 or 1 depending on bank
 	fsel := uint8(pin) / 10
@@ -190,7 +190,7 @@ func (g *rpio) PinMode(pin Pin, direction Direction) {
 
 // WritePin sets a given pin High or Low
 // by setting the clear or set registers respectively
-func (g *rpio) WritePin(pin Pin, state State) {
+func (g *GPIO) WritePin(pin Pin, state State) {
 
 	p := uint8(pin)
 
@@ -211,7 +211,7 @@ func (g *rpio) WritePin(pin Pin, state State) {
 }
 
 // Read the state of a pin
-func (g *rpio) ReadPin(pin Pin) State {
+func (g *GPIO) ReadPin(pin Pin) State {
 	// Input level register offset (13 / 14 depending on bank)
 	levelReg := uint8(pin)/32 + 13
 
@@ -224,7 +224,7 @@ func (g *rpio) ReadPin(pin Pin) State {
 
 // Toggle a pin state (high -> low -> high)
 // TODO: probably possible to do this much faster without read
-func (g *rpio) TogglePin(pin Pin) {
+func (g *GPIO) TogglePin(pin Pin) {
 	switch g.ReadPin(pin) {
 	case Low:
 		g.High(pin)
@@ -233,7 +233,7 @@ func (g *rpio) TogglePin(pin Pin) {
 	}
 }
 
-func (g *rpio) PullMode(pin Pin, pull Pull) {
+func (g *GPIO) PullMode(pin Pin, pull Pull) {
 	// Pull up/down/off register has offset 38 / 39, pull is 37
 	pullClkReg := uint8(pin)/32 + 38
 	pullReg := 37
@@ -264,7 +264,7 @@ func (g *rpio) PullMode(pin Pin, pull Pull) {
 
 // Open and memory map GPIO memory range from /dev/mem .
 // Some reflection magic is used to convert it to a unsafe []uint32 pointer
-func (g *rpio) Open() (err error) {
+func (g *GPIO) Open() (err error) {
 	var file *os.File
 	var base int64
 
@@ -313,7 +313,7 @@ func (g *rpio) Open() (err error) {
 }
 
 // Close unmaps GPIO memory
-func (g *rpio) Close() error {
+func (g *GPIO) Close() error {
 	g.memlock.Lock()
 	defer g.memlock.Unlock()
 	return syscall.Munmap(g.mem8)
@@ -321,7 +321,7 @@ func (g *rpio) Close() error {
 
 // Read /proc/device-tree/soc/ranges and determine the base address.
 // Use the default Raspberry Pi 1 base address if this fails.
-func (g *rpio) getGPIOBase() (base int64) {
+func (g *GPIO) getGPIOBase() (base int64) {
 	base = pi1GPIOBase
 	ranges, err := os.Open("/proc/device-tree/soc/ranges")
 	defer ranges.Close()

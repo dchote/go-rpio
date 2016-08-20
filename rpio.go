@@ -143,27 +143,27 @@ func (g *GPIO) Write(pin Pin, state State) {
 
 // Read pin state (high/low)
 func (g *GPIO) Read(pin Pin) State {
-	return ReadPin(pin)
+	return g.ReadPin(pin)
 }
 
 // Set a given pull up/down mode
 func (g *GPIO) Pull(pin Pin, pull Pull) {
-	PullMode(pin, pull)
+	g.PullMode(pin, pull)
 }
 
 // Pull up pin
 func (g *GPIO) PullUp(pin Pin) {
-	PullMode(pin, PullUp)
+	g.PullMode(pin, PullUp)
 }
 
 // Pull down pin
 func (g *GPIO) PullDown(pin Pin) {
-	PullMode(pin, PullDown)
+	g.PullMode(pin, PullDown)
 }
 
 // Disable pullup/down on pin
 func (g *GPIO) PullOff(pin Pin) {
-	PullMode(pin, PullOff)
+	g.PullMode(pin, PullOff)
 }
 
 // PinMode sets the direction of a given pin (Input or Output)
@@ -221,11 +221,11 @@ func (g *GPIO) ReadPin(pin Pin) State {
 // Toggle a pin state (high -> low -> high)
 // TODO: probably possible to do this much faster without read
 func (g *GPIO) TogglePin(pin Pin) {
-	switch ReadPin(pin) {
+	switch g.ReadPin(pin) {
 	case Low:
-		pin.High()
+		g.High(pin)
 	case High:
-		pin.Low()
+		g.Low(pin)
 	}
 }
 
@@ -273,7 +273,7 @@ func (g *GPIO) Open() (err error) {
 			"/dev/mem",
 			os.O_RDWR|os.O_SYNC,
 			0)
-		base = getGPIOBase()
+		base = g.getGPIOBase()
 	}
 
 	if err != nil {

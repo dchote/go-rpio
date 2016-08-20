@@ -106,6 +106,10 @@ type rpio struct {
 	mem8    []uint8
 }
 
+func Init() *rpio {
+	return &rpio
+}
+
 // Set pin as Input
 func (g *rpio) Input(pin Pin) {
 	g.PinMode(pin, Input)

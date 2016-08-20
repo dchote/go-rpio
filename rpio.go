@@ -106,10 +106,6 @@ type GPIO struct {
 	mem8    []uint8
 }
 
-func Init() *GPIO {
-	return GPIO
-}
-
 // Set pin as Input
 func (g *GPIO) Input(pin Pin) {
 	g.PinMode(pin, Input)

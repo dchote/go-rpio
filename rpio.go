@@ -195,8 +195,8 @@ func (g *GPIO) WritePin(pin Pin, state State) {
 	clearReg := p/32 + 10
 	setReg := p/32 + 7
 
-	g.memlock.Lock()
-	defer g.memlock.Unlock()
+	//g.memlock.Lock()
+	//defer g.memlock.Unlock()
 
 	if state == Low {
 		g.mem[clearReg] = 1 << (p & 31)

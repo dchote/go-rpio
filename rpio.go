@@ -100,93 +100,93 @@ const (
 )
 
 // Arrays for 8 / 32 bit access to memory and a semaphore for write locking
-var (
+type GPIO struct {
 	memlock sync.Mutex
 	mem     []uint32
 	mem8    []uint8
-)
+}
 
 // Set pin as Input
-func (pin Pin) Input() {
-	PinMode(pin, Input)
+func (g *GPIO) Input(pin Pin) {
+	g.PinMode(pin, Input)
 }
 
 // Set pin as Output
-func (pin Pin) Output() {
-	PinMode(pin, Output)
+func (g *GPIO) Output(pin Pin) {
+	g.PinMode(pin, Output)
 }
 
 // Set pin High
-func (pin Pin) High() {
-	WritePin(pin, High)
+func (g *GPIO) High(pin Pin) {
+	g.WritePin(pin, High)
 }
 
 // Set pin Low
-func (pin Pin) Low() {
-	WritePin(pin, Low)
+func (g *GPIO) Low(pin Pin) {
+	g.WritePin(pin, Low)
 }
 
 // Toggle pin state
-func (pin Pin) Toggle() {
-	TogglePin(pin)
+func (g *GPIO) Toggle(pin Pin) {
+	g.TogglePin(pin)
 }
 
 // Set pin Direction
-func (pin Pin) Mode(dir Direction) {
-	PinMode(pin, dir)
+func (g *GPIO) Mode(pin Pin, dir Direction) {
+	g.PinMode(pin, dir)
 }
 
 // Set pin state (high/low)
-func (pin Pin) Write(state State) {
-	WritePin(pin, state)
+func (g *GPIO) Write(pin Pin, state State) {
+	g.WritePin(pin, state)
 }
 
 // Read pin state (high/low)
-func (pin Pin) Read() State {
+func (g *GPIO) Read(pin Pin) State {
 	return ReadPin(pin)
 }
 
 // Set a given pull up/down mode
-func (pin Pin) Pull(pull Pull) {
+func (g *GPIO) Pull(pin Pin, pull Pull) {
 	PullMode(pin, pull)
 }
 
 // Pull up pin
-func (pin Pin) PullUp() {
+func (g *GPIO) PullUp(pin Pin) {
 	PullMode(pin, PullUp)
 }
 
 // Pull down pin
-func (pin Pin) PullDown() {
+func (g *GPIO) PullDown(pin Pin) {
 	PullMode(pin, PullDown)
 }
 
 // Disable pullup/down on pin
-func (pin Pin) PullOff() {
+func (g *GPIO) PullOff(pin Pin) {
 	PullMode(pin, PullOff)
 }
 
 // PinMode sets the direction of a given pin (Input or Output)
-func PinMode(pin Pin, direction Direction) {
+func (g *GPIO) PinMode(pin Pin, direction Direction) {
 
 	// Pin fsel register, 0 or 1 depending on bank
 	fsel := uint8(pin) / 10
 	shift := (uint8(pin) % 10) * 3
 
-	memlock.Lock()
-	defer memlock.Unlock()
+	g.memlock.Lock()
+	defer g.memlock.Unlock()
 
 	if direction == Input {
-		mem[fsel] = mem[fsel] &^ (pinMask << shift)
+		g.mem[fsel] = g.mem[fsel] &^ (pinMask << shift)
 	} else {
-		mem[fsel] = (mem[fsel] &^ (pinMask << shift)) | (1 << shift)
+		g.mem[fsel] = (g.mem[fsel] &^ (pinMask << shift)) | (1 << shift)
 	}
 
 }
 
 // WritePin sets a given pin High or Low
 // by setting the clear or set registers respectively
-func WritePin(pin Pin, state State) {
+func (g *GPIO) WritePin(pin Pin, state State) {
 
 	p := uint8(pin)
 
@@ -195,23 +195,23 @@ func WritePin(pin Pin, state State) {
 	clearReg := p/32 + 10
 	setReg := p/32 + 7
 
-	memlock.Lock()
-	defer memlock.Unlock()
+	g.memlock.Lock()
+	defer g.memlock.Unlock()
 
 	if state == Low {
-		mem[clearReg] = 1 << (p & 31)
+		g.mem[clearReg] = 1 << (p & 31)
 	} else {
-		mem[setReg] = 1 << (p & 31)
+		g.mem[setReg] = 1 << (p & 31)
 	}
 
 }
 
 // Read the state of a pin
-func ReadPin(pin Pin) State {
+func (g *GPIO) ReadPin(pin Pin) State {
 	// Input level register offset (13 / 14 depending on bank)
 	levelReg := uint8(pin)/32 + 13
 
-	if (mem[levelReg] & (1 << uint8(pin))) != 0 {
+	if (g.mem[levelReg] & (1 << uint8(pin))) != 0 {
 		return High
 	}
 
@@ -220,7 +220,7 @@ func ReadPin(pin Pin) State {
 
 // Toggle a pin state (high -> low -> high)
 // TODO: probably possible to do this much faster without read
-func TogglePin(pin Pin) {
+func (g *GPIO) TogglePin(pin Pin) {
 	switch ReadPin(pin) {
 	case Low:
 		pin.High()
@@ -229,38 +229,38 @@ func TogglePin(pin Pin) {
 	}
 }
 
-func PullMode(pin Pin, pull Pull) {
+func (g *GPIO) PullMode(pin Pin, pull Pull) {
 	// Pull up/down/off register has offset 38 / 39, pull is 37
 	pullClkReg := uint8(pin)/32 + 38
 	pullReg := 37
 	shift := (uint8(pin) % 32)
 
-	memlock.Lock()
-	defer memlock.Unlock()
+	g.memlock.Lock()
+	defer g.memlock.Unlock()
 
 	switch pull {
 	case PullDown, PullUp:
-		mem[pullReg] = mem[pullReg]&^3 | uint32(pull)
+		g.mem[pullReg] = g.mem[pullReg]&^3 | uint32(pull)
 	case PullOff:
-		mem[pullReg] = mem[pullReg] &^ 3
+		g.mem[pullReg] = g.mem[pullReg] &^ 3
 	}
 
 	// Wait for value to clock in, this is ugly, sorry :(
 	time.Sleep(time.Microsecond)
 
-	mem[pullClkReg] = 1 << shift
+	g.mem[pullClkReg] = 1 << shift
 
 	// Wait for value to clock in
 	time.Sleep(time.Microsecond)
 
-	mem[pullReg] = mem[pullReg] &^ 3
-	mem[pullClkReg] = 0
+	g.mem[pullReg] = g.mem[pullReg] &^ 3
+	g.mem[pullClkReg] = 0
 
 }
 
 // Open and memory map GPIO memory range from /dev/mem .
 // Some reflection magic is used to convert it to a unsafe []uint32 pointer
-func Open() (err error) {
+func (g *GPIO) Open() (err error) {
 	var file *os.File
 	var base int64
 
@@ -283,11 +283,11 @@ func Open() (err error) {
 	// FD can be closed after memory mapping
 	defer file.Close()
 
-	memlock.Lock()
-	defer memlock.Unlock()
+	g.memlock.Lock()
+	defer g.memlock.Unlock()
 
 	// Memory map GPIO registers to byte array
-	mem8, err = syscall.Mmap(
+	g.mem8, err = syscall.Mmap(
 		int(file.Fd()),
 		base,
 		memLength,
@@ -299,25 +299,25 @@ func Open() (err error) {
 	}
 
 	// Convert mapped byte memory to unsafe []uint32 pointer, adjust length as needed
-	header := *(*reflect.SliceHeader)(unsafe.Pointer(&mem8))
+	header := *(*reflect.SliceHeader)(unsafe.Pointer(&g.mem8))
 	header.Len /= (32 / 8) // (32 bit = 4 bytes)
 	header.Cap /= (32 / 8)
 
-	mem = *(*[]uint32)(unsafe.Pointer(&header))
+	g.mem = *(*[]uint32)(unsafe.Pointer(&header))
 
 	return nil
 }
 
 // Close unmaps GPIO memory
-func Close() error {
-	memlock.Lock()
-	defer memlock.Unlock()
-	return syscall.Munmap(mem8)
+func (g *GPIO) Close() error {
+	g.memlock.Lock()
+	defer g.memlock.Unlock()
+	return syscall.Munmap(g.mem8)
 }
 
 // Read /proc/device-tree/soc/ranges and determine the base address.
 // Use the default Raspberry Pi 1 base address if this fails.
-func getGPIOBase() (base int64) {
+func (g *GPIO) getGPIOBase() (base int64) {
 	base = pi1GPIOBase
 	ranges, err := os.Open("/proc/device-tree/soc/ranges")
 	defer ranges.Close()

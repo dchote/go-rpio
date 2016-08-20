@@ -107,7 +107,7 @@ type GPIO struct {
 }
 
 func Init() *GPIO {
-	return &GPIO
+	return GPIO
 }
 
 // Set pin as Input
